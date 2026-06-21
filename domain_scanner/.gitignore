@@ -1,0 +1,3 @@
+# Scan output (run artifacts, not committed)
+results/
+results_run.log
