@@ -1,3 +1,6 @@
 # Scan output (run artifacts, not committed)
 results/
 results_run.log
+
+# downloaded word lists (re-fetch with dict/fetch_dict.sh)
+dict/*.txt
