@@ -9,7 +9,7 @@ disk.
 
 | TLD          | Method | Signal |
 |--------------|--------|--------|
-| `.cool`      | RDAP over HTTPS (authoritative) | HTTP `404` = available, `200` = registered |
+| `.cool`      | RDAP over HTTPS (authoritative); `--method doh` for speed | HTTP `404` = available, `200` = registered |
 | `.sh`, `.ac` | WHOIS port 43 (authoritative); auto-falls back to DNS-over-HTTPS when port 43 is blocked | WHOIS "not registered" markers, or DoH `NXDOMAIN`/no-NS = available |
 
 > **Note on the DoH fallback:** `.sh`/`.ac` have no public RDAP service, so the

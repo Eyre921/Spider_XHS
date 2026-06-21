@@ -218,6 +218,11 @@ def check_doh(domain, timeout=15, retries=3):
 def make_checker(tld, method, whois_timeout, http_timeout):
     """Return a function label -> Result for the given TLD."""
     if tld == "cool":
+        # RDAP is authoritative but Identity Digital rate-limits aggressively
+        # (HTTP 429). --method doh switches to the much faster DNS-over-HTTPS
+        # heuristic, which matched RDAP exactly on every tested .cool domain.
+        if method == "doh":
+            return lambda label: check_doh(f"{label}.cool", timeout=http_timeout)
         return lambda label: check_rdap(f"{label}.cool", "cool", timeout=http_timeout)
 
     server = WHOIS_SERVERS[tld]
