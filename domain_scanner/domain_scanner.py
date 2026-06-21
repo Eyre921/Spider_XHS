@@ -60,12 +60,21 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 
 RDAP_ENDPOINTS = {
     "cool": "https://rdap.identitydigital.services/rdap/domain/{domain}",
+    "org": "https://rdap.publicinterestregistry.org/rdap/domain/{domain}",
+    "app": "https://pubapi.registry.google/rdap/domain/{domain}",
+    "page": "https://pubapi.registry.google/rdap/domain/{domain}",
+    "one": "https://rdap.nic.one/domain/{domain}",
 }
 
 WHOIS_SERVERS = {
     "sh": "whois.nic.sh",
     "ac": "whois.nic.ac",
 }
+
+# TLDs with no public RDAP and an unreachable WHOIS port (43) here: DoH only.
+DOH_ONLY_TLDS = {"me"}
+
+ALL_TLDS = ["sh", "ac", "cool", "me", "org", "app", "one", "page"]
 
 # Substrings that indicate "this domain is NOT registered" in a WHOIS reply.
 WHOIS_AVAILABLE_MARKERS = (
@@ -217,19 +226,21 @@ def check_doh(domain, timeout=15, retries=3):
 
 def make_checker(tld, method, whois_timeout, http_timeout):
     """Return a function label -> Result for the given TLD."""
-    if tld == "cool":
-        # RDAP is authoritative but Identity Digital rate-limits aggressively
-        # (HTTP 429). --method doh switches to the much faster DNS-over-HTTPS
-        # heuristic, which matched RDAP exactly on every tested .cool domain.
-        if method == "doh":
-            return lambda label: check_doh(f"{label}.cool", timeout=http_timeout)
-        return lambda label: check_rdap(f"{label}.cool", "cool", timeout=http_timeout)
+    # --method doh forces the DNS-over-HTTPS heuristic for any TLD. Useful when
+    # an RDAP server rate-limits (e.g. Identity Digital's .cool returns HTTP 429
+    # under load); DoH matched RDAP exactly on every tested domain.
+    if method == "doh":
+        return lambda label: check_doh(f"{label}.{tld}", timeout=http_timeout)
+
+    if tld in RDAP_ENDPOINTS:
+        return lambda label: check_rdap(f"{label}.{tld}", tld, timeout=http_timeout)
+
+    if tld in DOH_ONLY_TLDS:
+        return lambda label: check_doh(f"{label}.{tld}", timeout=http_timeout)
 
     server = WHOIS_SERVERS[tld]
 
     # Decide effective method. "auto" tries whois first, then doh.
-    if method == "doh":
-        return lambda label: check_doh(f"{label}.{tld}", timeout=http_timeout)
     if method == "whois":
         def _whois_only(label):
             r = check_whois(f"{label}.{tld}", server, timeout=whois_timeout)
@@ -352,7 +363,7 @@ def scan_tld(tld, lengths, charset, workers, method, outdir,
 def main(argv=None):
     p = argparse.ArgumentParser(
         description="Scan 2- and 3-letter .sh/.ac/.cool domains for availability.")
-    p.add_argument("--tld", choices=["sh", "ac", "cool", "all"], default="all",
+    p.add_argument("--tld", choices=ALL_TLDS + ["all"], default="all",
                    help="which TLD(s) to scan (default: all)")
     p.add_argument("--lengths", default="2,3",
                    help="comma list of label lengths, e.g. '2,3' (default)")
@@ -377,7 +388,7 @@ def main(argv=None):
     if not lengths:
         p.error("--lengths is empty")
 
-    tlds = ["sh", "ac", "cool"] if args.tld == "all" else [args.tld]
+    tlds = ALL_TLDS if args.tld == "all" else [args.tld]
 
     log(f"Scanning {tlds} | lengths={lengths} | charset={args.charset} "
         f"| workers={args.workers} | method={args.method}")

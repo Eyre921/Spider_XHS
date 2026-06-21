@@ -7,10 +7,14 @@ disk.
 
 ## How it detects availability
 
-| TLD          | Method | Signal |
-|--------------|--------|--------|
-| `.cool`      | RDAP over HTTPS (authoritative); `--method doh` for speed | HTTP `404` = available, `200` = registered |
+| TLD | Method | Signal |
+|-----|--------|--------|
+| `.cool`, `.org`, `.app`, `.page`, `.one` | RDAP over HTTPS (authoritative) | HTTP `404` = available, `200` = registered |
 | `.sh`, `.ac` | WHOIS port 43 (authoritative); auto-falls back to DNS-over-HTTPS when port 43 is blocked | WHOIS "not registered" markers, or DoH `NXDOMAIN`/no-NS = available |
+| `.me` | DNS-over-HTTPS heuristic (no public RDAP) | `NXDOMAIN`/no-NS = available |
+
+`--method doh` forces the DoH heuristic for **any** TLD — handy when an RDAP
+server rate-limits (Identity Digital's `.cool` returns HTTP 429 under load).
 
 > **Note on the DoH fallback:** `.sh`/`.ac` have no public RDAP service, so the
 > authoritative check is WHOIS on TCP port 43. Many cloud/sandbox networks block
